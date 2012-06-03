@@ -21,6 +21,9 @@ typedef struct
 {
 	int		xpos;
 	int		ypos;
+//	int		xdest;
+//	int		ydest;
+//	Direction	direct;
 	SDL_Surface*	pSurfRight;
 	SDL_Surface*	pSurfLeft;
 } Pferd;
@@ -97,6 +100,12 @@ SDL_Surface *flip_surface( SDL_Surface *surface, int flags )
 
 }
 
+void dumpSurface( SDL_Surface* pSurf )
+{
+	printf("		format->Amask:	 0x%X\n", pSurf->format->Amask);
+	printf("		format->Ashift:	 0x%X\n", pSurf->format->Ashift);
+}
+
 Pferd* createPferd( int xpos, int ypos, char* bmpFilename )
 {
 	int colorkey;
@@ -105,13 +114,22 @@ Pferd* createPferd( int xpos, int ypos, char* bmpFilename )
 
 	pNewPferd->xpos = xpos;
 	pNewPferd->ypos = ypos;
-
-	pNewPferd->pSurfRight = SDL_DisplayFormatAlpha( SDL_LoadBMP ( bmpFilename ) );
 	
-	colorkey = SDL_MapRGB( pNewPferd->pSurfRight->format, 0xFF, 0x00, 0x00 );
-	SDL_SetColorKey( pNewPferd->pSurfRight, SDL_SRCCOLORKEY, colorkey );
+	pNewPferd->pSurfRight = SDL_DisplayFormatAlpha( SDL_LoadBMP ( bmpFilename ) );
 
+	colorkey = SDL_MapRGB( pNewPferd->pSurfRight->format, 0xFF, 0x00, 0x00 );
+	SDL_SetColorKey( pNewPferd->pSurfRight, SDL_RLEACCEL | SDL_SRCCOLORKEY, colorkey );
+	
 	pNewPferd->pSurfLeft = flip_surface( pNewPferd->pSurfRight, FLIP_HORIZONTAL|SDL_SRCCOLORKEY );
+
+	pNewPferd->pSurfRight->format->Amask  = pNewPferd->pSurfLeft->format->Amask; 
+	//pNewPferd->pSurfRight->format->Ashift = pNewPferd->pSurfLeft->format->Ashift; 
+
+	printf("SurfRight: \n");
+	dumpSurface( pNewPferd->pSurfRight );
+	
+	printf("\nSurfLeft: \n");
+	dumpSurface( pNewPferd->pSurfLeft );
 
 	return pNewPferd;
 }
@@ -232,16 +250,35 @@ void wanderPferd( Pferd* pPferd, int times )
 
 int main( int argc, char* args[] ) 
 { 
-	Pferd* pSPferd;
+	SDL_Event event;
+	Pferd* 	  pSPferd;
+
 	//Start SDL 
 	SDL_Init( SDL_INIT_EVERYTHING ); 
 	
+	//atexit(SDL_Quit);
+
+	SDL_WM_SetCaption("Snuddlehorse", "Snuddlehorse");
+
 	m_screen = SDL_SetVideoMode( 800, 600, 32, SDL_SWSURFACE );
 	m_background = SDL_LoadBMP( "background.bmp" );
 	
+
+
 	pSPferd = createPferd( 400, 300, "pferd.bmp" );
 
-	wanderPferd( pSPferd, 5 );
+	while (1)
+	{
+		wanderPferd( pSPferd, 1 );
+
+		while(SDL_PollEvent(&event)) 
+		{
+			if (event.type == SDL_QUIT) {
+				SDL_Quit();
+				return 0;
+			}
+		}
+	}
 
 	SDL_Delay( 2000 );
 
